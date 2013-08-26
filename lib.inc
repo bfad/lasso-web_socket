@@ -1,78 +1,111 @@
-define ws_supportedVersions => (: 13)
+define http_status_101 => `Switching Protocols`
+define http_status_400 => `Bad Request`
+define http_status_426 => `Upgrade Required`
+define http_status_501 => `Not Implemented`
 
-define http_response_400 => bytes('HTTP/1.1 400 Bad Request\r\n\r\n')
-define http_response_501 => bytes('HTTP/1.1 501 Not Implemented\r\n\r\n')
+define websocket_handler => type {
 
-define ws_http_response_426 => bytes('\
-    HTTP/1.1 426 Upgrade Required\r\n\
-    Upgrade: websocket\r\n\
-    Connection: Upgrade\r\n\
-    Sec-WebSocket-Version: ' + (with v in ws_supportedVersions select string(#v))->join(', ') + '\r\n\r\n'
-)
+    data
+        private supported = (:13)
 
-/**!
-    This method takes in an http_request object and checks that the client's opening
-    handshake is valid and returns the corresponding handshake response for the
-    server.
-*/
-define ws_generateHandshakeResponse(req::http_request)::bytes => {
-    /*
-    /* Validate the client's handshake request
-    /*/
-    // Validate HTTP version
-    // Would prefer to 505 instead of 400, but spec says it's for major versions
-    not #req->protocol->beginsWith(`HTTP`) or #req->protocolVersion < 1.1
-        ? return http_response_400 + bytes(`Requires HTTP 1.1 or higher`)
+    public supported => .'supported'
 
-    // Validate HTTP method
-    bytes(`GET`) != bytes(#req->method)
-        ? return http_response_501 + bytes(`Method "` + #req->method + `" is not implemented`)
 
-    // Validate URL
-    #req->uri->first != '/' and not #req->uri->beginsWith(`http://`) and not #req->uri->beginsWith(`https://`)
-        ? return http_response_400 + bytes(`Malformated URL`)
+    public handshake(conn::web_connection) => {
+        local(params) = #conn->requestParams
 
-    // Validate Host header
-    local(headers) = #req->headers
-    #headers === null or #headers->find('host') == void
-        ? return http_response_400 + bytes(`Missing header field "Host"`)
+        // Validate HTTP version
+        // Would prefer to 505 instead of 400, but spec says it's for major versions
+        local(http_protocol) = #params->find(::SERVER_PROTOCOL)
+        local(http_version)  = decimal(#http_protocol->split(`/`)->second)
+        if(not #http_protocol->beginsWith(`HTTP`) or #http_version < 1.1) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Requires HTTP 1.1 or higher`))
+            return
+        }
 
-    // Validate Upgrade Header
-    #headers->find('upgrade') == void
-        ? return http_response_400 + bytes(`Missing header field "Upgrade"`)
-    not #headers->find('upgrade')->asString->contains('websocket')
-        ? return http_response_400 + bytes(`Missing "websocket" Upgrade header`)
+        // Validate HTTP method
+        if(#params->find(::REQUEST_METHOD)->asBytes != bytes(`GET`)) => {
+            #conn->setStatus(501, http_status_501)
+                & writeBodyBytes(bytes(`Method "` + #params->find(::REQUEST_METHOD) + `" is not implemented`))
+            return
+        }
 
-    // Validate Connection Header
-    #headers->find('connection') == void
-        ? return http_response_400 + bytes(`Missing header field "Connection"`)
-    not #headers->find('connection')->asString->contains('upgrade')
-        ? return http_response_400 + bytes(`Missing "upgrade" Connection header`)
+        // Validate URL
+        local(path) = #params->find(::PATH_INFO)
+        if(#path->first != '/' and not #path->beginsWith(`http://`) and not #path->beginsWith(`https://`)) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Malformated URL`))
+            return
+        }
 
-    // Validate Sec-WebSocket-Key header
-    #headers->find('sec-websocket-key') == void
-        ? return http_response_400 + bytes(`Missing header field "Sec-WebSocket-Key"`)
-    decode_base64(#headers->find('sec-websocket-key'))->size != 16
-        ? return http_response_400 + bytes(`Sec-WebSocket-Key header value is invalid`)
+        // Validate Host header
+        if(#params->find(::HTTP_HOST) == void) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing header field "Host"`))
+            return
+        }
 
-    // Validate Sec-WebSocket-Version header
-    #headers->find('sec-websocket-version') == void
-        ? return http_response_400 + bytes(`Missing header field "Sec-WebSocket-Version"`)
-    not ws_supportedVersions->contains(integer(#headers->find('sec-websocket-version')))
-        ? return ws_http_response_426 + bytes(`Sec-WebSocket-Version header requesting invalid version. Supported versions are: ` + (with v in ws_supportedVersions select string(#v))->join(','))
+        // Validate Upgrade Header
+        if(#params->find(`Upgrade`) == void) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing header field "Upgrade"`))
+            return
+        else(not #params->find(`Upgrade`)->contains('websocket'))
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing "websocket" Upgrade header`))
+            return
+        }
 
-    // All browser clients should have an Origin header - do we care about that here?
-    // If not, where do we care about that and what do we send back? (pg. 21)
+        // Validate Connection Header
+        if(#params->find(`Connection`) == void) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing header field "Connection"`))
+            return
+        else(not #params->find('Connection')->contains('upgrade'))
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing "upgrade" Connection header`))
+            return
+        }
 
-    // If we want, we can validate the origin (if sent?)
+        // Validate Sec-WebSocket-Key header
+        local(ws_key) = #params->find('sec-websocket-key')
+        if(#ws_key == void) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing header field "Sec-WebSocket-Key"`))
+            return
+        // This should verify the decoded value is 16 characters long
+        else(#ws_key->size != 24 or not #ws_key->endswith(`==`))
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Sec-WebSocket-Key header value is invalid`))
+            return
+        }
 
-    local(response) = bytes("\
-        HTTP/1.1 101 Switching Protocols\r\n\
-        Upgrade: websocket\r\n\
-        Connection: Upgrade\r\n\
-        Sec-WebSocket-Accept: " + encode_base64(cipher_digest(#headers->find('sec-websocket-key') + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"), -digest='SHA1') + "\r\n\
-        \r\n"
-    )
+        // Validate Sec-WebSocket-Version header
+        local(ws_version) = #params->find('sec-websocket-version')
+        if(#ws_version == void) => {
+            #conn->setStatus(400, http_status_400)
+                & writeBodyBytes(bytes(`Missing header field "Sec-WebSocket-Version"`))
+            return
+        else(not .supported->contains(integer(#ws_version)))
+            #conn->setStatus(426, http_status_426)
+                & writeHeaderLine(`Upgrade: websocket`)
+                & writeHeaderLine(`Connection: Upgrade`)
+                & writeHeaderLine(`Sec-WebSocket-Version: ` + (with v in .supported select string(#v))->join(', '))
+                & writeBodyBytes(bytes(`Sec-WebSocket-Version header requesting invalid version. Supported versions are: ` + (with v in .supported select string(#v))->join(',')))
+            return
+        }
 
-    return #response
+
+        // All browser clients should have an Origin header - do we care about that here?
+        // If not, where do we care about that and what do we send back? (pg. 21)
+
+        // If we want, we can validate the origin (if sent?)
+                
+        #conn->setStatus(101, http_status_101)
+            & writeHeaderLine('Upgrade: websocket')
+            & writeHeaderLine('Connection: Upgrade')
+            & writeHeaderLine('Sec-WebSocket-Accept: ' + encode_base64(cipher_digest(#ws_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", -digest='SHA1')))
+            & writeHeader
+    }
 }
