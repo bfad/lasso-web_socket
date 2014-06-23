@@ -6,12 +6,22 @@ define http_status_501 => `Not Implemented`
 define websocket_handler => type {
 
     data
-        private supported = (:13)
+        private supported = (:13),
+        protected connection
 
-    public supported => .'supported'
+    public supported  => .`supported`
+    public connection => .`connection`
+    public netTcp     => .`connection`->connection
 
 
-    public handshake(conn::web_connection) => {
+    public onCreate() => {}
+    public onCreate(conn::web_connection) => {
+        .connection = #conn
+    }
+
+
+    public handshake => {
+        local(conn)   = .connection
         local(params) = #conn->requestParams
 
         // Validate HTTP version
@@ -114,4 +124,6 @@ define websocket_handler => type {
     public readMsg(conn::web_connection) => {}
 
 
-}
+}// EXTENDING NET_TCP
+protect => {\net_tcp}
+define net_tcp->isOpen => .fd->isValid

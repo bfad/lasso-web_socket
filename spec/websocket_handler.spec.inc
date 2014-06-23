@@ -18,7 +18,7 @@ describe(`websocket_handler->handshake`) => {
                 ::REQUEST_METHOD  = `POST`,
                 ::PATH_INFO       = `/`
             )
-            websocket_handler->handshake(#ws_con)
+            websocket_handler(#ws_con)->handshake
 
             expect(400            , #ws_con->statusCode)
             expect(http_status_400, #ws_con->statusMsg)
@@ -34,7 +34,7 @@ describe(`websocket_handler->handshake`) => {
                 ::REQUEST_METHOD  = `POST`,
                 ::PATH_INFO       = `/`
             )
-            websocket_handler->handshake(#ws_con)
+            websocket_handler(#ws_con)->handshake
 
             expect(501            , #ws_con->statusCode)
             expect(http_status_501, #ws_con->statusMsg)
@@ -50,7 +50,7 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `gEt`,
             ::PATH_INFO       = `/`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(501            , #ws_con->statusCode)
         expect(http_status_501, #ws_con->statusMsg)
@@ -78,9 +78,9 @@ describe(`websocket_handler->handshake`) => {
             ::PATH_INFO       = `/`
         )
 
-        websocket_handler->handshake(#req_head)
-        websocket_handler->handshake(#req_post)
-        websocket_handler->handshake(#req_put)
+        websocket_handler(#req_head)->handshake
+        websocket_handler(#req_post)->handshake
+        websocket_handler(#req_put)->handshake
 
         expect(501            , #req_head->statusCode)
         expect(http_status_501, #req_head->statusMsg)
@@ -101,7 +101,7 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `*`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -116,7 +116,7 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `/`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -133,7 +133,7 @@ describe(`websocket_handler->handshake`) => {
             ::PATH_INFO       = `/`,
             ::HTTP_HOST       = `localhost`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -150,7 +150,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_HOST       = `localhost`,
             ::HTTP_UPGRADE    = `8 Available`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -167,7 +167,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_HOST       = `localhost`,
             ::HTTP_UPGRADE    = `websocket`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -185,7 +185,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_UPGRADE    = `websocket`,
             ::HTTP_CONNECTION = `intermitent`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -203,7 +203,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_UPGRADE    = `websocket`,
             ::HTTP_CONNECTION = `Upgrade`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -222,7 +222,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_CONNECTION        = `Upgrade`,
             ::HTTP_SEC_WEBSOCKET_KEY = `cmhpbm8=`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -241,7 +241,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_CONNECTION        = `Upgrade`,
             ::HTTP_SEC_WEBSOCKET_KEY = `cmhpbm8hcmhpbm8hcmhpbg==`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(400            , #ws_con->statusCode)
         expect(http_status_400, #ws_con->statusMsg)
@@ -261,7 +261,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_SEC_WEBSOCKET_KEY     = `cmhpbm8hcmhpbm8hcmhpbg==`,
             ::HTTP_SEC_WEBSOCKET_VERSION = `0`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(426            , #ws_con->statusCode)
         expect(http_status_426, #ws_con->statusMsg)
@@ -288,7 +288,7 @@ describe(`websocket_handler->handshake`) => {
             ::HTTP_SEC_WEBSOCKET_KEY     = `cmhpbm8hcmhpbm8hcmhpbg==`,
             ::HTTP_SEC_WEBSOCKET_VERSION = `13`
         )
-        websocket_handler->handshake(#ws_con)
+        websocket_handler(#ws_con)->handshake
 
         expect(101            , #ws_con->statusCode)
         expect(http_status_101, #ws_con->statusMsg)
