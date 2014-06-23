@@ -4,8 +4,7 @@ if(not var_defined(`_ws_loaded`)) => {
     not #here->beginsWith('/') or #here->size == 1
         ? #here = io_file_getcwd + '/' + #here
 
-    sourcefile(file(#here + '../lib.inc'), -autoCollect=false)->invoke
-    sourcefile(file(#here + '../websocket_frame.lasso'), -autoCollect=false)->invoke
+    sourcefile(file(#here + '../lib.lasso'), -autoCollect=false)->invoke
 
     var(_ws_loaded) = true
 }
