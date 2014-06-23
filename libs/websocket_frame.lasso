@@ -8,12 +8,12 @@ define websocket_frame => type {
 
 
 
-    public isFin         => .raw->get(1)->bitTest(1)
-    public isRsv1        => .raw->get(1)->bitTest(2)
-    public isRsv2        => .raw->get(1)->bitTest(3)
-    public isRsv3        => .raw->get(1)->bitTest(4)
+    public isFin         => .raw->get(1)->bitShiftRight(4)->bitTest(4)
+    public isRsv1        => .raw->get(1)->bitShiftRight(4)->bitTest(3)
+    public isRsv2        => .raw->get(1)->bitShiftRight(4)->bitTest(2)
+    public isRsv3        => .raw->get(1)->bitShiftRight(4)->bitTest(1)
     public isMasked      => .raw->get(2)->bitTest(8)
-    public opcode        => .raw->get(1)->bitShiftRight(4) // I want the last 4 bits of the first byte (might want 'em reversed)
+    public opcode        => .raw->get(1)->bitClear(8)->bitClear(7)->bitClear(6)->bitClear(5) // I want the last 4 bits of the first byte (might want 'em reversed)
     public payloadLength => {
         local(length) = .payloadLengthOrFlag
 

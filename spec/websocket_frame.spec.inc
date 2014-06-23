@@ -10,7 +10,7 @@ describe(::websocket_frame) => {
     context(`Given a bytestream that is a complete frame`) => {
         describe(`-> isFin`) => {
             it(`returns true when the first bit is set to 1`) => {
-                expect(true, websocket_frame(0x1->bytes)->isFin)
+                expect(true, websocket_frame(0x80->bytes)->isFin)
             }
             it(`returns false when the first bit is set to 0`) => {
                 expect(false, websocket_frame(0->bytes)->isFin)
@@ -19,7 +19,7 @@ describe(::websocket_frame) => {
 
         describe(`-> isRsv1`) => {
             it(`returns true when the second bit is set to 1`) => {
-                expect(true, websocket_frame(integer->bitSet(2)->bytes)->isRsv1)
+                expect(true, websocket_frame(integer->bitSet(7)->bytes)->isRsv1)
             }
             it(`returns false when the second bit is set to 0`) => {
                 expect(false, websocket_frame(0->bytes)->isRsv1)
@@ -28,7 +28,7 @@ describe(::websocket_frame) => {
 
         describe(`-> isRsv2`) => {
             it(`returns true when the second bit is set to 1`) => {
-                expect(true, websocket_frame(integer->bitSet(3)->bytes)->isRsv2)
+                expect(true, websocket_frame(integer->bitSet(6)->bytes)->isRsv2)
             }
             it(`returns false when the second bit is set to 0`) => {
                 expect(false, websocket_frame(0->bytes)->isRsv2)
@@ -37,7 +37,7 @@ describe(::websocket_frame) => {
 
         describe(`-> isRsv3`) => {
             it(`returns true when the second bit is set to 1`) => {
-                expect(true, websocket_frame(integer->bitSet(4)->bytes)->isRsv3)
+                expect(true, websocket_frame(integer->bitSet(5)->bytes)->isRsv3)
             }
             it(`returns false when the second bit is set to 0`) => {
                 expect(false, websocket_frame(0->bytes)->isRsv3)
@@ -46,8 +46,8 @@ describe(::websocket_frame) => {
 
         describe(`-> opcode`) => {
             it(`returns the value of the last four bits of the first byte`) => {
-                expect(0xC, websocket_frame(0xC0->bytes)->opcode)
-                expect(0x3, websocket_frame(0x31->bytes)->opcode)
+                expect(0xC, websocket_frame(0x8C->bytes)->opcode)
+                expect(0x3, websocket_frame(0x83->bytes)->opcode)
             }
         }
 
