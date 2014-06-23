@@ -111,6 +111,7 @@ define websocket_handler => type {
 
 
 
+    public readMsg(conn::web_connection) => {}
 
 
 }
