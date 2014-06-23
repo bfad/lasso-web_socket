@@ -148,7 +148,7 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `/`,
             ::HTTP_HOST       = `localhost`,
-            `Upgrade`         = `8 Available`
+            ::HTTP_UPGRADE    = `8 Available`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -165,7 +165,7 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `/`,
             ::HTTP_HOST       = `localhost`,
-            `Upgrade`         = `websocket`
+            ::HTTP_UPGRADE    = `websocket`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -182,8 +182,8 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `/`,
             ::HTTP_HOST       = `localhost`,
-            `Upgrade`         = `websocket`,
-            `Connection`      = `intermitent`
+            ::HTTP_UPGRADE    = `websocket`,
+            ::HTTP_CONNECTION = `intermitent`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -200,8 +200,8 @@ describe(`websocket_handler->handshake`) => {
             ::REQUEST_METHOD  = `GET`,
             ::PATH_INFO       = `/`,
             ::HTTP_HOST       = `localhost`,
-            `Upgrade`         = `websocket`,
-            `Connection`      = `Upgrade`
+            ::HTTP_UPGRADE    = `websocket`,
+            ::HTTP_CONNECTION = `Upgrade`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -214,13 +214,13 @@ describe(`websocket_handler->handshake`) => {
     it(`returns a 400 response if the "Sec-WebSocket-Key" header doesn't decode to a 16 length byte stream`) => {
         #ws_con = test_conn
         #ws_con->requestParams = map(
-            ::SERVER_PROTOCOL   = `HTTP/1.1`,
-            ::REQUEST_METHOD    = `GET`,
-            ::PATH_INFO         = `/`,
-            ::HTTP_HOST         = `localhost`,
-            `Upgrade`           = `websocket`,
-            `Connection`        = `Upgrade`,
-            `Sec-WebSocket-Key` = `cmhpbm8=`
+            ::SERVER_PROTOCOL        = `HTTP/1.1`,
+            ::REQUEST_METHOD         = `GET`,
+            ::PATH_INFO              = `/`,
+            ::HTTP_HOST              = `localhost`,
+            ::HTTP_UPGRADE           = `websocket`,
+            ::HTTP_CONNECTION        = `Upgrade`,
+            ::HTTP_SEC_WEBSOCKET_KEY = `cmhpbm8=`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -233,13 +233,13 @@ describe(`websocket_handler->handshake`) => {
     it(`returns a 400 response if there is no "Sec-WebSocket-Version" header`) => {
         #ws_con = test_conn
         #ws_con->requestParams = map(
-            ::SERVER_PROTOCOL   = `HTTP/1.1`,
-            ::REQUEST_METHOD    = `GET`,
-            ::PATH_INFO         = `/`,
-            ::HTTP_HOST         = `localhost`,
-            `Upgrade`           = `websocket`,
-            `Connection`        = `Upgrade`,
-            `Sec-WebSocket-Key` = `cmhpbm8hcmhpbm8hcmhpbg==`
+            ::SERVER_PROTOCOL        = `HTTP/1.1`,
+            ::REQUEST_METHOD         = `GET`,
+            ::PATH_INFO              = `/`,
+            ::HTTP_HOST              = `localhost`,
+            ::HTTP_UPGRADE           = `websocket`,
+            ::HTTP_CONNECTION        = `Upgrade`,
+            ::HTTP_SEC_WEBSOCKET_KEY = `cmhpbm8hcmhpbm8hcmhpbg==`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -252,14 +252,14 @@ describe(`websocket_handler->handshake`) => {
     it(`returns a 426 response if the "Sec-WebSocket-Version" header doesn't contain proper version`) => {
         #ws_con = test_conn
         #ws_con->requestParams = map(
-            ::SERVER_PROTOCOL       = `HTTP/1.1`,
-            ::REQUEST_METHOD        = `GET`,
-            ::PATH_INFO             = `/`,
-            ::HTTP_HOST             = `localhost`,
-            `Upgrade`               = `websocket`,
-            `Connection`            = `Upgrade`,
-            `Sec-WebSocket-Key`     = `cmhpbm8hcmhpbm8hcmhpbg==`,
-            `Sec-WebSocket-Version` = `0`
+            ::SERVER_PROTOCOL            = `HTTP/1.1`,
+            ::REQUEST_METHOD             = `GET`,
+            ::PATH_INFO                  = `/`,
+            ::HTTP_HOST                  = `localhost`,
+            ::HTTP_UPGRADE               = `websocket`,
+            ::HTTP_CONNECTION            = `Upgrade`,
+            ::HTTP_SEC_WEBSOCKET_KEY     = `cmhpbm8hcmhpbm8hcmhpbg==`,
+            ::HTTP_SEC_WEBSOCKET_VERSION = `0`
         )
         websocket_handler->handshake(#ws_con)
 
@@ -279,14 +279,14 @@ describe(`websocket_handler->handshake`) => {
     it(`returns the proper handshake response with the proper return key`) => {
         #ws_con = test_conn
         #ws_con->requestParams = map(
-            ::SERVER_PROTOCOL       = `HTTP/1.1`,
-            ::REQUEST_METHOD        = `GET`,
-            ::PATH_INFO             = `/`,
-            ::HTTP_HOST             = `localhost`,
-            `Upgrade`               = `websocket`,
-            `Connection`            = `Upgrade`,
-            `Sec-WebSocket-Key`     = `cmhpbm8hcmhpbm8hcmhpbg==`,
-            `Sec-WebSocket-Version` = `13`
+            ::SERVER_PROTOCOL            = `HTTP/1.1`,
+            ::REQUEST_METHOD             = `GET`,
+            ::PATH_INFO                  = `/`,
+            ::HTTP_HOST                  = `localhost`,
+            ::HTTP_UPGRADE               = `websocket`,
+            ::HTTP_CONNECTION            = `Upgrade`,
+            ::HTTP_SEC_WEBSOCKET_KEY     = `cmhpbm8hcmhpbm8hcmhpbg==`,
+            ::HTTP_SEC_WEBSOCKET_VERSION = `13`
         )
         websocket_handler->handshake(#ws_con)
 

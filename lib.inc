@@ -25,14 +25,14 @@ define websocket_handler => type {
         }
 
         // Validate HTTP method
-        if(#params->find(::REQUEST_METHOD)->asBytes != bytes(`GET`)) => {
+        if(bytes(#params->find(::REQUEST_METHOD)) != bytes(`GET`)) => {
             #conn->setStatus(501, http_status_501)
                 & writeBodyBytes(bytes(`Method "` + #params->find(::REQUEST_METHOD) + `" is not implemented`))
             return
         }
 
         // Validate URL
-        local(path) = #params->find(::PATH_INFO)
+        local(path) = #params->find(::PATH_INFO)->asString
         if(#path->first != '/' and not #path->beginsWith(`http://`) and not #path->beginsWith(`https://`)) => {
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Malformated URL`))
@@ -47,29 +47,29 @@ define websocket_handler => type {
         }
 
         // Validate Upgrade Header
-        if(#params->find(`Upgrade`) == void) => {
+        if(#params->find(::HTTP_UPGRADE) == void) => {
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing header field "Upgrade"`))
             return
-        else(not #params->find(`Upgrade`)->contains('websocket'))
+        else(not #params->find(::HTTP_UPGRADE)->contains('websocket'))
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing "websocket" Upgrade header`))
             return
         }
 
         // Validate Connection Header
-        if(#params->find(`Connection`) == void) => {
+        if(#params->find(::HTTP_CONNECTION) == void) => {
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing header field "Connection"`))
             return
-        else(not #params->find('Connection')->contains('upgrade'))
+        else(not #params->find(::HTTP_CONNECTION)->contains('Upgrade'))
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing "upgrade" Connection header`))
             return
         }
 
         // Validate Sec-WebSocket-Key header
-        local(ws_key) = #params->find('sec-websocket-key')
+        local(ws_key) = #params->find(::HTTP_SEC_WEBSOCKET_KEY)
         if(#ws_key == void) => {
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing header field "Sec-WebSocket-Key"`))
@@ -82,7 +82,7 @@ define websocket_handler => type {
         }
 
         // Validate Sec-WebSocket-Version header
-        local(ws_version) = #params->find('sec-websocket-version')
+        local(ws_version) = #params->find(::HTTP_SEC_WEBSOCKET_VERSION)
         if(#ws_version == void) => {
             #conn->setStatus(400, http_status_400)
                 & writeBodyBytes(bytes(`Missing header field "Sec-WebSocket-Version"`))
@@ -101,11 +101,16 @@ define websocket_handler => type {
         // If not, where do we care about that and what do we send back? (pg. 21)
 
         // If we want, we can validate the origin (if sent?)
-                
+        
         #conn->setStatus(101, http_status_101)
             & writeHeaderLine('Upgrade: websocket')
             & writeHeaderLine('Connection: Upgrade')
             & writeHeaderLine('Sec-WebSocket-Accept: ' + encode_base64(cipher_digest(#ws_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", -digest='SHA1')))
-            & writeHeader
+            & writeBodyBytes(bytes)
     }
+
+
+
+
+
 }

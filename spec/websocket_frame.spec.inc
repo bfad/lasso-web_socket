@@ -53,7 +53,7 @@ describe(::websocket_frame) => {
 
         describe(`-> isMasked`) => {
             it(`returns true when the ninth bit is set to 1`) => {
-                expect(true, websocket_frame(integer->bitSet(9)->bytes)->isMasked)
+                expect(true, websocket_frame(integer->bitSet(16)->bytes)->isMasked)
             }
             it(`returns false when the ninth bit is set to 0`) => {
                 expect(false, websocket_frame(0->bytes)->isMasked)
@@ -62,23 +62,21 @@ describe(::websocket_frame) => {
 
         describe(`-> payloadLength`) => {
             it(`uses the last 7 bits of the second byte to return values < 126`) => {
-                expect(125, websocket_frame(0xFB91->bytes)->payloadLength)
+                expect(125, websocket_frame(0xFD91->bytes)->payloadLength)
             }
 
             it(`uses bytes 3 & 4 to determine the payload length if the last 7 bits of the second byte is 126`) => {
-                expect(130, websocket_frame(0x0082FC91->bytes)->payloadLength)
-                expect(256, websocket_frame(0x0100FD91->bytes)->payloadLength)
+                expect(130, websocket_frame(0x0082FE91->bytes)->payloadLength)
             }
 
             it(`uses bytes 3 - 11 to determine the payload length if the last 7 bits of the second byte is 127`) => {
-                expect(65536, websocket_frame(0x10000FE91->bytes)->payloadLength)
                 expect(65536, websocket_frame(0x10000FF91->bytes)->payloadLength)
             }
         }
 
         describe(`-> maskKey`) => {
             it(`returns null if isMasked is false`) => {
-                local(frame) = websocket_frame(0xFA91->bytes)
+                local(frame) = websocket_frame(0x7A91->bytes)
 
                 expect(false, #frame->isMasked)
                 expect(null , #frame->maskKey)
@@ -88,7 +86,7 @@ describe(::websocket_frame) => {
                 local(frame) = websocket_frame(0x3FFFB91->bytes)
                 
                 expect(true, #frame->isMasked)
-                expect(1023, #frame->maskKey)
+                expect(1023, #frame->maskKey->export32bits)
             }
         }
 
@@ -100,9 +98,11 @@ describe(::websocket_frame) => {
                 // Also, integer->bytes doesn't work for > 64bit streams (also seems to always produce a 64bit stream)
                 expect(
                     bytes->import32bits(0x3FA79BB8)&,
-                    websocket_frame(bytes->import64bits(0x9BB8000003FF0991)& + bytes->import16bits(0x3FA7)&)->payload
+                    websocket_frame(bytes->import64bits(0x9BB8000003FF8491)& + bytes->import16bits(0x3FA7)&)->payload
                 )
             }
         }
+
+        describe(`-> payloadUnmasked`) => {}
     }
 }

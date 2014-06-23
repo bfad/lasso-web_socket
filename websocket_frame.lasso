@@ -12,7 +12,7 @@ define websocket_frame => type {
     public isRsv1        => .raw->get(1)->bitTest(2)
     public isRsv2        => .raw->get(1)->bitTest(3)
     public isRsv3        => .raw->get(1)->bitTest(4)
-    public isMasked      => .raw->get(2)->bitTest(1)
+    public isMasked      => .raw->get(2)->bitTest(8)
     public opcode        => .raw->get(1)->bitShiftRight(4) // I want the last 4 bits of the first byte (might want 'em reversed)
     public payloadLength => {
         local(length) = .payloadLengthOrFlag
@@ -34,7 +34,7 @@ define websocket_frame => type {
         not .isMasked? return null
 
         local(start) = .numBytesBase + .numBytesForExtendedPayloadLength + 1
-        return .raw->getRange(#start, #start + 4)->export32bits
+        return .raw->getRange(#start, #start + 4)
     }
     public payload => {
         local(start) = .numBytesBase + .numBytesForExtendedPayloadLength + .numBytesForMask + 1
@@ -42,9 +42,22 @@ define websocket_frame => type {
 
         return .raw->getRange(#start, #end)
     }
+    public payloadUnmasked => {
+        not .isMasked? return .payload
+
+        local(key   ) = .maskKey
+        local(masked) = .payload
+        local(retval) = bytes
+
+        loop(.payload->size) => {
+            #retval->append(bytes->import8bits(#masked->get(loop_count)->bitXor(#key->get(((loop_count - 1) % 4) + 1)))&)
+        }
+        
+        return #retval
+    }
 
 
-    private payloadLengthOrFlag => .raw->get(2)->bitShiftRight(1)
+    private payloadLengthOrFlag => .raw->get(2)->bitClear(8)
 
     private numBytesBase => 2
 
