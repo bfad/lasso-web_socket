@@ -14,6 +14,7 @@ define test_conn => type {
     trait { import web_connection }
     
     data
+        public net = null,
         public requestParams::trait_map = map,
         public stdin  = '',
         public mimes  = '',
@@ -21,6 +22,11 @@ define test_conn => type {
         public body   = '',
         public statusCode = 200,
         public statusMsg  = `OK`
+
+    public onCreate() => {}
+    public onCreate(net::mock_tcp) => {
+        .net = #net
+    }
 
     public getStatus()  => pair(.statusCode, .statusMsg)
     public setStatus(code::integer, msg::string) => {
@@ -61,8 +67,57 @@ define test_conn => type {
     public writeBodyBytes(b::bytes) => {
         .'body' = #b
     }
-    public connection() => {}
+    public connection() => .net
 
     // Not for the trait
     public writeHeader => {}
+
+    public close => {
+        .net->close
+        .net = null
+    }
+}
+
+
+// mock for a net_tcp type
+define mock_tcp => type {
+    data
+        public isOpen     = true,
+        public readStore  = array,
+        public writeStore = array
+
+    public onCreate() => {}
+    public onCreate(readStore::array) => {
+        .readStore = #readStore
+    }
+
+    public readSomeBytes(count::integer, timeoutSeconds::integer=-1) => {
+        not .isOpen? fail('Connection is closed')
+        
+        local(buffer) = .readStore->first
+
+        #buffer->isNotA(::bytes)? return .readStore->removeFirst // should be void
+
+        if(#buffer->size <= #count) => {
+            .readStore->removeFirst
+            return #buffer
+        }
+
+        .readStore->first = #buffer->getRange(#count+1, #buffer->size)
+
+        return #buffer->getRange(1, #count)
+    }
+    public writeBytes(data::bytes, offset::integer=0, length::integer=-1) => {
+        not .isOpen? fail('Connection is closed')
+
+        -1 == #length
+            ? #length = #data->size
+
+        .writeStore->insert(#data->getRange(1, #length))
+        return #length
+    }
+
+    public close => {
+        .isOpen = false
+    }
 }

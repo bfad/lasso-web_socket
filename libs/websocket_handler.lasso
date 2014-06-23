@@ -1,12 +1,9 @@
-define http_status_101 => `Switching Protocols`
-define http_status_400 => `Bad Request`
-define http_status_426 => `Upgrade Required`
-define http_status_501 => `Not Implemented`
-
 define websocket_handler => type {
 
     data
-        private supported = (:13),
+        private supported              = (:13),
+        private sentClose::boolean = false
+    data
         protected connection
 
     public supported  => .`supported`
@@ -121,9 +118,68 @@ define websocket_handler => type {
 
 
 
-    public readMsg(conn::web_connection) => {}
+    public readMsg => {
+        local(conn) = .netTcp
+        local(data)
+        local(buffer) = bytes
+        while(#conn and #conn->isOpen and #data := #conn->readSomeBytes(132)) => {
+            #buffer->append(#data)
+        }
+        #buffer->size == 0 ? return null
+
+        local(frame) = websocket_frame(#buffer)
+        if(not #frame->isMasked) => {
+            .sendClose(ws_statusCode_clientUnmasked, ws_statusMsg_clientUnmasked)
+            // In case they sent us an unmasked closed - this will cause TCP connection to be closed
+            ws_opcode_close == #frame->opcode
+                ? .close
+            return null
+        }
+
+        match(#frame->opcode) => {
+        case(ws_opcode_close)
+            not .sentClose
+                ? .sendClose(#frame->payloadUnmasked->getRange(1,2)->export16bits)
+            .close
+            return null
+
+        case(ws_opcode_ping)
+            .sendPong(#frame->payloadUnmasked)
+            return null
+
+        case(ws_opcode_pong)
+            return null
+        }
+    }
 
 
-}// EXTENDING NET_TCP
+    public sendClose(status_code::integer=we_statusCode_normalClose, status_msg::string='') => {
+        local(payload) = bytes->import16bits(#status_code->hostToNet16)&append(bytes(#status_msg))&;
+
+        .netTcp->writeBytes(
+            websocket_frame(
+                -fin,
+                -opcode  = ws_opcode_close,
+                -payload = #payload
+            )->raw
+        )
+
+        .sentClose = true
+    }
+
+    public sendPong(data::bytes=bytes) => {
+        .netTcp->writeBytes(
+            websocket_frame(
+                -fin,
+                -opcode  = ws_opcode_pong,
+                -payload = #data
+            )->raw
+        )
+    }
+
+    public close => .connection->close
+}
+
+// EXTENDING NET_TCP
 protect => {\net_tcp}
 define net_tcp->isOpen => .fd->isValid

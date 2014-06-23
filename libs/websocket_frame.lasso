@@ -2,6 +2,8 @@ define websocket_frame => type {
 
     data private raw
 
+    public raw => .`raw`
+
     public onCreate(data::bytes) => {
         .raw = #data
     }
