@@ -134,7 +134,15 @@ define websocket_handler => type {
 
         case(ws_opcode_pong)
             return null
+
+        case(ws_opcode_binaryData)
+            return #frame->payloadUnmasked
+
+        case(ws_opcode_textData)
+            return #frame->payloadUnmasked->exportAs('UTF-8')
         }
+
+        return null
     }
 
     private getFrame => {

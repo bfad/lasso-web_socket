@@ -181,6 +181,35 @@ describe(`websocket_handler->readMsg`) => {
             expect(#mtcp->readStore->size > 0)
             expect(bytes('Fusce'), #mtcp->readStore->first)
         }
+
+        it(`returns binary data as a bytes object`) => {
+            local(data)   = bytes('Hello, World!')
+            local(result) = websocket_handler(test_conn(mock_tcp(array(
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_binaryData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = #data
+                )->raw
+            ))))->readMsg
+
+            expect(::bytes, #result->type)
+            expect(#data  , #result)
+        }
+        it(`returns text data as a string object`) => {
+            local(data)   = bytes('Hello, World!')
+            local(result) = websocket_handler(test_conn(mock_tcp(array(
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = #data
+                )->raw
+            ))))->readMsg
+
+            expect(::string       , #result->type)
+            expect(#data->asString, #result)
+        }
     }
 
     /*
