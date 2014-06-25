@@ -210,6 +210,46 @@ describe(`websocket_handler->readMsg`) => {
             expect(::string       , #result->type)
             expect(#data->asString, #result)
         }
+
+        it(`returns a message that had been split out over 2 frames`) => {
+            local(mtcp) = mock_tcp(array(
+                websocket_frame(
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('Hel')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('lo!')
+                )->raw
+            ))
+
+            expect('Hello!', websocket_handler(test_conn(#mtcp))->readMsg)
+        }
+        it(`returns a message that had been split out over 3 frames`) => {
+            local(mtcp) = mock_tcp(array(
+                websocket_frame(
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('He')
+                )->raw,
+                websocket_frame(
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('ll')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('o!')
+                )->raw
+            ))
+
+            expect('Hello!', websocket_handler(test_conn(#mtcp))->readMsg)
+        }
     }
 
     /*

@@ -135,11 +135,15 @@ define websocket_handler => type {
         case(ws_opcode_pong)
             return null
 
-        case(ws_opcode_binaryData)
-            return #frame->payloadUnmasked
+        case(ws_opcode_binaryData, ws_opcode_continuation)
+            #frame->isFin
+                ? return #frame->payloadUnmasked
+            return (#frame->payloadUnmasked + .readMsg)
 
         case(ws_opcode_textData)
-            return #frame->payloadUnmasked->exportAs('UTF-8')
+            #frame->isFin
+                ? return #frame->payloadUnmasked->exportAs('UTF-8')
+            return (#frame->payloadUnmasked + .readMsg)->exportAs('UTF-8')
         }
 
         return null
