@@ -103,7 +103,7 @@ define mock_tcp => type {
             return #buffer
         }
 
-        .readStore->first = #buffer->getRange(#count+1, #buffer->size)
+        .readStore->get(1) = #buffer->getRange(#count+1, #buffer->size)
 
         return #buffer->getRange(1, #count)
     }

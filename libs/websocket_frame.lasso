@@ -119,13 +119,13 @@ define websocket_frame => type {
         return #retval
     }
 
-    private payloadLengthOrFlag => .raw->get(2)->bitClear(8)
+    public payloadLengthOrFlag => .raw->get(2)->bitClear(8)
 
-    private numBytesBase => 2
+    public numBytesBase => 2
 
-    private numBytesForMask => .isMasked? 4 | 0
+    public numBytesForMask => .isMasked? 4 | 0
 
-    private numBytesForExtendedPayloadLength => {
+    public numBytesForExtendedPayloadLength => {
         local(flag) = .payloadLengthOrFlag
         match(true) => {
         case(#flag < 126)

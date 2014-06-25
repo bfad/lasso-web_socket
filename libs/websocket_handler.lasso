@@ -1,7 +1,7 @@
 define websocket_handler => type {
 
     data
-        private supported              = (:13),
+        private supported          = (:13),
         private sentClose::boolean = false
     data
         protected connection
@@ -117,24 +117,9 @@ define websocket_handler => type {
     }
 
 
-
     public readMsg => {
-        local(conn) = .netTcp
-        local(data)
-        local(buffer) = bytes
-        while(#conn and #conn->isOpen and #data := #conn->readSomeBytes(132)) => {
-            #buffer->append(#data)
-        }
-        #buffer->size == 0 ? return null
-
-        local(frame) = websocket_frame(#buffer)
-        if(not #frame->isMasked) => {
-            .sendClose(ws_statusCode_clientUnmasked, ws_statusMsg_clientUnmasked)
-            // In case they sent us an unmasked closed - this will cause TCP connection to be closed
-            ws_opcode_close == #frame->opcode
-                ? .close
-            return null
-        }
+        local(frame) = .getFrame
+        #frame->isA(::null)? return null
 
         match(#frame->opcode) => {
         case(ws_opcode_close)
@@ -150,6 +135,44 @@ define websocket_handler => type {
         case(ws_opcode_pong)
             return null
         }
+    }
+
+    private getFrame => {
+        local(conn) = .netTcp
+        not #conn or not #conn->isOpen
+            ? return null
+
+        local(buffer) = #conn->readSomeBytes(2, 2)
+        #buffer->size != 2 ? return null
+
+        local(info_frame)     = websocket_frame(#buffer)
+        local(base_size)      = 2
+        local(mask_size)      = #info_frame->numBytesForMask
+        local(expayload_size) = #info_frame->numBytesForExtendedPayloadLength
+
+        #expayload_size != 0
+            ? #info_frame = websocket_frame(#buffer->append(#conn->readSomeBytes(#expayload_size))&)
+
+
+        local(data)
+        local(bytes_left) = #mask_size + #info_frame->payloadLength
+        while(#conn and #conn->isOpen and #bytes_left > 0 and #data := #conn->readSomeBytes(#bytes_left)) => {
+            #bytes_left -= #data->size
+            #buffer->append(#data)
+        }
+
+        #buffer->size != #base_size + #mask_size + #expayload_size + #info_frame->payloadLength
+            ? return null
+
+        local(frame) = websocket_frame(#buffer)
+        if(not #frame->isMasked) => {
+            .sendClose(ws_statusCode_clientUnmasked, ws_statusMsg_clientUnmasked)
+            // In case they sent us an unmasked closed - this will cause TCP connection to be closed
+            ws_opcode_close == #frame->opcode
+                ? .close
+            return null
+        }
+        return #frame
     }
 
 
