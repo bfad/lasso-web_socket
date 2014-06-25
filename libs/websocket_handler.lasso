@@ -130,20 +130,28 @@ define websocket_handler => type {
 
         case(ws_opcode_ping)
             .sendPong(#frame->payloadUnmasked)
-            return null
+            return .readMsg
 
         case(ws_opcode_pong)
-            return null
+            return .readMsg
 
         case(ws_opcode_binaryData, ws_opcode_continuation)
             #frame->isFin
                 ? return #frame->payloadUnmasked
-            return (#frame->payloadUnmasked + .readMsg)
+
+            local(more_data) = .readMsg
+            #more_data->isA(::null)? return null
+            
+            return (#frame->payloadUnmasked + #more_data)
 
         case(ws_opcode_textData)
             #frame->isFin
                 ? return #frame->payloadUnmasked->exportAs('UTF-8')
-            return (#frame->payloadUnmasked + .readMsg)->exportAs('UTF-8')
+
+            local(more_data) = .readMsg
+            #more_data->isA(::null)? return null
+            
+            return (#frame->payloadUnmasked + #more_data)->exportAs('UTF-8')
         }
 
         return null

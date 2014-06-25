@@ -252,6 +252,89 @@ describe(`websocket_handler->readMsg`) => {
         }
     }
 
+    context(`Receiving control message in middle of reading a data message`) => {
+        it(`receives a ping, sends a pong, and then finishes reading the message`) => {
+            local(mtcp) = mock_tcp(array(
+                websocket_frame(
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('Hel')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_ping,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('ding!')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('lo!')
+                )->raw
+            ))
+
+            expect('Hello!', websocket_handler(test_conn(#mtcp))->readMsg)
+
+            local(written) = websocket_frame(#mtcp->writeStore->first)
+            expect(bytes('ding!'), #written->payload)
+            expect(ws_opcode_pong, #written->opcode)
+        }
+
+        it(`receives a pong, and then finishes reading the message`) => {
+            local(mtcp) = mock_tcp(array(
+                websocket_frame(
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('Hel')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_pong,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('ding!')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('lo!')
+                )->raw
+            ))
+
+            expect('Hello!', websocket_handler(test_conn(#mtcp))->readMsg)
+            expect(#mtcp->writeStore->isEmpty)
+        }
+
+        it(`receives a close, sends a close, and then returns null`) => {
+            local(mtcp) = mock_tcp(array(
+                websocket_frame(
+                    -opcode  = ws_opcode_textData,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('Hel')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_close,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('ding!')
+                )->raw,
+                websocket_frame(
+                    -fin,
+                    -opcode  = ws_opcode_continuation,
+                    -maskKey = sys_random->bitAnd(0xFFFFFFFF),
+                    -payload = bytes('lo!')
+                )->raw
+            ))
+
+            expect(null, websocket_handler(test_conn(#mtcp))->readMsg)
+            expect(1   , #mtcp->readStore->size)
+
+            local(written) = websocket_frame(#mtcp->writeStore->first)
+            expect(ws_opcode_close, #written->opcode)
+        }
+    }
+
     /*
     it(`closes the connection if the client sends unmasked message`) => {
         // In this case, a server MAY send a Close frame with a status code of 1002 (protocol error) as defined in Section 7.4.1.
