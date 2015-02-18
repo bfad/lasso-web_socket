@@ -36,7 +36,8 @@ define echo_websocket => type {
     
     public invoke(conn::web_connection) => { handle_error => stdoutnl(error_stack + '\n' + error_msg)
         // hand shake
-        .handshake(#conn)
+        .connection = #conn
+        .handshake
 
 
         
