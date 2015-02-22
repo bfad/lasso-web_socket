@@ -17,12 +17,9 @@ define echo_websocket => type { parent websocket_handler
 
     public handleMessages => {
         local(read)
-        while(true) => {
-            if(#read := .readMsg) => {
-                log_always('READ: ' + #read)
-                .writeMsg('ECHO: ' + #read)
-            }
-            sleep(1000)
+        while(#read := .readMsg) => {
+            log_always('READ: ' + #read)
+            .writeMsg('ECHO: ' + #read)
         }
     }
     
