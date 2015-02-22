@@ -117,8 +117,9 @@ define websocket_handler => type {
     }
 
 
-    public readMsg => {
-        local(frame) = .getFrame
+    // Default timeout is -1 which means block until you get a message
+    public readMsg(timeout::integer=-1) => {
+        local(frame) = .getFrame(#timeout)
         #frame->isA(::null)? return null
 
         match(#frame->opcode) => {
@@ -130,16 +131,16 @@ define websocket_handler => type {
 
         case(ws_opcode_ping)
             .sendPong(#frame->payloadUnmasked)
-            return .readMsg
+            return .readMsg(#timeout)
 
         case(ws_opcode_pong)
-            return .readMsg
+            return .readMsg(#timeout)
 
         case(ws_opcode_binaryData, ws_opcode_continuation)
             #frame->isFin
                 ? return #frame->payloadUnmasked
 
-            local(more_data) = .readMsg
+            local(more_data) = .readMsg(#timeout)
             #more_data->isA(::null)? return null
             
             return (#frame->payloadUnmasked + #more_data)
@@ -148,7 +149,7 @@ define websocket_handler => type {
             #frame->isFin
                 ? return #frame->payloadUnmasked->exportAs('UTF-8')
 
-            local(more_data) = .readMsg
+            local(more_data) = .readMsg(#timeout)
             #more_data->isA(::null)? return null
             
             return (#frame->payloadUnmasked + #more_data)->exportAs('UTF-8')
@@ -157,12 +158,12 @@ define websocket_handler => type {
         return null
     }
 
-    private getFrame => {
+    private getFrame(timeout::integer) => {
         local(conn) = .netTcp
         not #conn or not #conn->isOpen
             ? return null
 
-        local(buffer) = #conn->readSomeBytes(2, 2)
+        local(buffer) = #conn->readSomeBytes(2, #timeout)
         #buffer->size != 2 ? return null
 
         local(info_frame)     = websocket_frame(#buffer)
