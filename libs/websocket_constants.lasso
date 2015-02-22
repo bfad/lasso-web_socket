@@ -25,3 +25,9 @@ define ws_opcode_continuation => 0x0
 define ws_opcode_textData     => 0x1
 define ws_opcode_ping         => 0x9
 define ws_opcode_pong         => 0xA
+
+
+/*
+* Miscellaneous
+*/
+define ws_frame_maxPayloadLength => 9223372036854775807

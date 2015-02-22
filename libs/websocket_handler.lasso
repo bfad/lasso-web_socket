@@ -196,6 +196,51 @@ define websocket_handler => type {
     }
 
 
+    public writeMsg(message::string, -maxFrameContentLength::integer=ws_frame_maxPayloadLength) => .writeMsg(bytes(#message), -maxFrameContentLength=#maxFrameContentLength, -isTextData)
+
+    public writeMsg(message::bytes, -maxFrameContentLength::integer=ws_frame_maxPayloadLength, -isTextData::boolean=false) => {
+        #message == bytes
+            ? return
+
+        #maxFrameContentLength = math_min(#maxFrameContentLength, ws_frame_maxPayloadLength)
+
+        if(#message->size <= #maxFrameContentLength) => {
+            .writeFrame(
+                websocket_frame(
+                    -fin,
+                    -opcode  = (#isTextData ? ws_opcode_textData | ws_opcode_binaryData),
+                    -payload = #message
+                )
+            )
+            return
+        }
+
+        local(num_frames_needed) = (#message->size / #maxFrameContentLength) + ((#message->size % #maxFrameContentLength) > 0 ? 1 | 0)
+        local(frame_count) = 1
+
+        // Write first frame
+        .writeFrame(websocket_frame(
+            -opcode  = (#isTextData ? ws_opcode_textData | ws_opcode_binaryData),
+            -payload = #message->sub(1, #maxFrameContentLength)
+        ))
+
+        // Write intermediate and final frames
+        // If the number of bytes to read in bytes->sub is > then number left, it just does number left (no need to trap for final frame)
+        local(num_loops) = #num_frames_needed - 1
+        loop(#num_loops) => {
+            .writeFrame(websocket_frame(
+                -fin     = (loop_count == #num_loops),
+                -opcode  = ws_opcode_continuation,
+                -payload = #message->sub((#maxFrameContentLength * loop_count) + 1, #maxFrameContentLength)
+            ))
+        }
+    }
+
+    public writeFrame(frame::websocket_frame) => {
+        .netTcp->writeBytes(#frame->raw)
+    }
+
+
     public sendClose(status_code::integer=we_statusCode_normalClose, status_msg::string='') => {
         local(payload) = bytes->import16bits(#status_code->hostToNet16)&append(bytes(#status_msg))&;
 
