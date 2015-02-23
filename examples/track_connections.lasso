@@ -1,7 +1,7 @@
 local(here) = currentCapture->callSite_file->stripLastComponent + '/'
 not #here->beginsWith('/') or #here->size == 1
     ? #here = io_file_getcwd + '/' + #here
-sourcefile(file(#here + '../lib.lasso'), -autoCollect=false)->invoke
+sourcefile(file(#here + '../websocket_server.lasso'), -autoCollect=false)->invoke
 
 
 // Storing the connections in a thread object so that it can be used by other threads
