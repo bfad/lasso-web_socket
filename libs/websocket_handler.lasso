@@ -18,7 +18,12 @@ define websocket_handler => type {
 
 
     public handshake => {
-        local(conn)   = .connection
+        local(conn) = .connection
+
+        if(lasso_version(-lassoVersion)->beginsWith('9.3.')) => {
+            #conn->pullRequest&pullPOST
+        }
+
         local(params) = #conn->requestParams
 
         // Validate HTTP version
