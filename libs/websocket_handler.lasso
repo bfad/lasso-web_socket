@@ -2,7 +2,8 @@ define websocket_handler => type {
 
     data
         private supported          = (:13),
-        private sentClose::boolean = false
+        private sentClose::boolean = false,
+        private buffer
     data
         protected connection
 
@@ -168,29 +169,46 @@ define websocket_handler => type {
         not #conn or not #conn->isOpen
             ? return null
 
-        local(buffer) = #conn->readSomeBytes(2, #timeout)
-        #buffer->size != 2 ? return null
+        local(buffer) = .buffer || bytes
 
-        local(info_frame)     = websocket_frame(#buffer)
+        #buffer->size < 2
+            ? #buffer->append(#conn->readSomeBytes(2 - #buffer->size, #timeout) || bytes)
+        #buffer->size < 2 ? return null
+
+        // At least in 9.3, it's possible buffer read more than 2 bytes
+
+        local(frame)          = websocket_frame(#buffer)
         local(base_size)      = 2
-        local(mask_size)      = #info_frame->numBytesForMask
-        local(expayload_size) = #info_frame->numBytesForExtendedPayloadLength
+        local(mask_size)      = #frame->numBytesForMask
+        local(expayload_size) = #frame->numBytesForExtendedPayloadLength
 
-        #expayload_size != 0
-            ? #info_frame = websocket_frame(#buffer->append(#conn->readSomeBytes(#expayload_size))&)
+        // Buffer may have read more than 2 bytes, so figure out how many more
+        // bytes are needed to be read to get the payload length
+        // (which will be negative if need to read more, so multiply by -1)
+        local(bytes_left_for_payload_size) = -1 * (#buffer->size - #base_size - #expayload_size)
+
+        #bytes_left_for_payload_size > 0
+            ? #frame->onCreate(#buffer->append(#conn->readSomeBytes(#bytes_left_for_payload_size))& || bytes)
 
 
+        local(payload_size) = #frame->payloadLength
+        local(total_size)   = #base_size + #mask_size + #expayload_size + #payload_size
+        local(bytes_left)   = #total_size - #buffer->size
         local(data)
-        local(bytes_left) = #mask_size + #info_frame->payloadLength
         while(#conn and #conn->isOpen and #bytes_left > 0 and #data := #conn->readSomeBytes(#bytes_left)) => {
             #bytes_left -= #data->size
             #buffer->append(#data)
         }
 
-        #buffer->size != #base_size + #mask_size + #expayload_size + #info_frame->payloadLength
+        #buffer->size < #total_size
             ? return null
+        
+        if(#buffer->size > #total_size) => {
+            .buffer = #buffer->sub(#total_size + 1)
+            #buffer = #buffer->sub(1, #total_size)
+        }
 
-        local(frame) = websocket_frame(#buffer)
+        #frame->onCreate(#buffer)
         if(not #frame->isMasked) => {
             .sendClose(ws_statusCode_clientUnmasked, ws_statusMsg_clientUnmasked)
             // In case they sent us an unmasked closed - this will cause TCP connection to be closed
